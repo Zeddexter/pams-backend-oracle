@@ -13,23 +13,29 @@ import { AppService } from './app.service';
       isGlobal: true,
     }),
 
-    // 🟦 Conexión PostgreSQL principal
+    // 🟠 Conexión Oracle principal
     TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.PG_HOST,
-      port: parseInt(process.env.PG_PORT ?? '5432'),
-      username: process.env.PG_USERNAME,
-      password: process.env.PG_PASSWORD,
-      database: process.env.PG_DATABASE,
-      synchronize: true, // ⚠️ Usa false en producción
+      type: 'oracle',
+      host: process.env.ORACLE_HOST,
+      port: parseInt(process.env.ORACLE_PORT ?? '1521'),
+      username: process.env.ORACLE_USERNAME,
+      password: process.env.ORACLE_PASSWORD,
+      serviceName: process.env.ORACLE_SERVICE_NAME,
+      sid: process.env.ORACLE_SID || undefined,
+      synchronize: false, // ⚠️ Usa false en producción
       autoLoadEntities: true,
       logging: true,
+      connectString: `${process.env.ORACLE_HOST}:${process.env.ORACLE_PORT}/${process.env.ORACLE_SERVICE_NAME}`,
+      extra: {
+        // Opción útil cuando usas InstantClient local
+        libDir: process.env.ORACLE_CLIENT,
+      },
     }),
 
-    // 🔹 Módulos funcionales del sistema (importados desde modules.constant.ts)
+    // 🔹 Módulos funcionales
     ...MODULES,
 
-    // 🔹 Configuración de logs (Winston)
+    // 🔹 Logs con Winston
     WinstonModule.forRoot({
       transports: [
         new winston.transports.Console({

@@ -7,7 +7,6 @@ import {
 	Request,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginUserDto } from './dtos';
 import {
 	ApiBearerAuth,
 	ApiCreatedResponse,
@@ -16,45 +15,44 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { UserService } from '../user/user.service';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
 	constructor(
 		private readonly authService: AuthService,
-		private readonly userService: UserService,
 	) {}
 
-	@Post('login')
-	@ApiOperation({ summary: 'User login' })
-	@ApiCreatedResponse({
-		description: 'The record has been successfully created.',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	async loginUser(@Body() loginUserDto: LoginUserDto) {
-		return await this.authService.login(loginUserDto);
-	}
+	// @Post('login')
+	// @ApiOperation({ summary: 'User login' })
+	// @ApiCreatedResponse({
+	// 	description: 'The record has been successfully created.',
+	// })
+	// @ApiResponse({ status: 401, description: 'Unauthorized' })
+	// async loginUser(@Body() loginUserDto: LoginUserDto) {
+	// 	return await this.authService.login(loginUserDto);
+	// }
 
-	@Get('validate-token')
-	@UseGuards(JwtAuthGuard)
-	@ApiBearerAuth()
-	@ApiOperation({ summary: 'Validate JWT token and get user data' })
-	@ApiCreatedResponse({
-		description: 'Token is valid, returns user data',
-	})
-	@ApiResponse({ status: 401, description: 'Invalid or expired token' })
-	async validateToken(@Request() req) {
-		// El usuario ya está validado por el Guard y está en req.user
-		const detailUser = await this.userService.findOne(req.user.id);
-		return detailUser;
-	}
+	// @Get('validate-token')
+	// @UseGuards(JwtAuthGuard)
+	// @ApiBearerAuth()
+	// @ApiOperation({ summary: 'Validate JWT token and get user data' })
+	// @ApiCreatedResponse({
+	// 	description: 'Token is valid, returns user data',
+	// })
+	// @ApiResponse({ status: 401, description: 'Invalid or expired token' })
+	// async validateToken(@Request() req) {
+	// 	// El usuario ya está validado por el Guard y está en req.user
+	// 	const detailUser = await this.userService.getJwtToken()
+	// 	return detailUser;
+	// }
 
-	@Get('me')
-	@UseGuards(JwtAuthGuard)
-	@ApiBearerAuth()
-	@ApiOperation({ summary: 'Get current user profile' })
-	async getCurrentUser(@Request() req) {
-		return await this.authService.getUserProfile(req.user.id);
-	}
+// 	@Get('me')
+// 	@UseGuards(JwtAuthGuard)
+// 	@ApiBearerAuth()
+// 	@ApiOperation({ summary: 'Get current user profile' })
+// 	async getCurrentUser(@Request() req) {
+// 		return await this.authService.getUserProfile(req.user.id);
+// 	}
+// }
 }

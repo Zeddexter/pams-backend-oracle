@@ -1,4 +1,4 @@
-import { User } from 'src/database';
+
 
 export class AuthBuilder {
 	private id: string;
@@ -31,15 +31,6 @@ export class AuthBuilder {
 		return this;
 	}
 
-	build(): User {
-		const user = new User();
-		user.id = this.id;
-		user.numdocument = this.numdocument;
-		user.password = this.password;
-		user.typedocument = this.typedocument;
-		user.isactive = this.isactive;
-		return user;
-	}
 	static create(): AuthBuilder {
 		return new AuthBuilder();
 	}
