@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  oracle-db:
+    image: gvenzl/oracle-xe:11
+    container_name: oracle-mac-db
+    ports:
+      - "1521:1521"
+    environment:
+      - ORACLE_PASSWORD=Oracle123
+    volumes:
+      - /Users/joantorres/Documents/Proyectos/Freelance/pams/oracle-data:/opt/oracle/oradata
+    platform: linux/amd64  # necesario si tienes Rosetta habilitado o Docker emula x86
+volumes:
+  oracle-data:

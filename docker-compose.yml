@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  oracle-db:
+    image: oracleinanutshell/oracle-xe-11g
+    container_name: oracle-db
+    ports:
+      - "1521:1521"
+    environment:
+      - ORACLE_ALLOW_REMOTE=true
+      - ORACLE_DISABLE_ASYNCH_IO=true
+      - ORACLE_PASSWORD=Oracle123
+    volumes:
+      - oracle-data:/u01/app/oracle/oradata
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'SELECT 1 FROM DUAL;' | sqlplus sys/Oracle123@XE as sysdba"]
+      interval: 1m
+      timeout: 30s
+      retries: 5
+
+volumes:
+  oracle-data:
