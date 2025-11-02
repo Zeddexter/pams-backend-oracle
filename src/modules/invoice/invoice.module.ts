@@ -13,4 +13,4 @@ import { MAESTROPRODUCTO } from 'src/database';
 	providers: [InvoiceService],
 	exports: [InvoiceService], // Opcional: si necesitas usar el servicio en otros módulos
 })
-export class InvoicenModule {}
+export class InvoiceModule {}

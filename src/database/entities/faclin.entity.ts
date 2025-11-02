@@ -6,7 +6,7 @@ import { Faccab } from './faccab.entity';
  * Tabla de facturación
  *
  */
-@Entity({ name: 'FACLIN', synchronize: false })
+@Entity({ name: 'FACLIN',synchronize: false })
 export class Faclin {
 	@PrimaryColumn({ name: 'SERIE' })
 	serie: string;

@@ -25,23 +25,18 @@ try {
     // 🟠 Conexión Oracle principal
     TypeOrmModule.forRoot({
       type: 'oracle',
-      host: process.env.ORACLE_HOST,
-      port: parseInt(process.env.ORACLE_PORT ?? '1521'),
-      username: process.env.ORACLE_USERNAME,
-      password: process.env.ORACLE_PASSWORD,
-      serviceName: process.env.ORACLE_SERVICE_NAME,
-      sid: process.env.ORACLE_SID || undefined,
-      synchronize: false, // ⚠️ Usa false en producción
+      host: process.env.DB_HOST ?? 'localhost',
+      port: parseInt(process.env.DB_PORT ?? '1521'),
+      username: process.env.DB_USERNAME ?? 'OraclePAMS',
+      password: process.env.DB_PASSWORD ?? 'oracle',
+      serviceName: process.env.SERVICE_NAME ?? 'XEPDB1',
+      connectString: `${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.SERVICE_NAME}`,
+      synchronize: false, // ⚠️ No activar en producción
       autoLoadEntities: true,
       logging: true,
-      connectString: `${process.env.ORACLE_HOST}:${process.env.ORACLE_PORT}/${process.env.ORACLE_SERVICE_NAME}`,
-      extra: {
-        // Opción útil cuando usas InstantClient local
-        libDir: process.env.ORACLE_CLIENT,
-      },
     }),
 
-    // 🔹 Módulos funcionales
+    // 🔹 Módulos funcionales (importa tus features aquí)
     ...MODULES,
 
     // 🔹 Logs con Winston
