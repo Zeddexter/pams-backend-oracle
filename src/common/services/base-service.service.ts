@@ -182,7 +182,7 @@ export abstract class BaseService<T> {
 		const tableName = this.repository.metadata.tableName;
 
 		let innerQuery = (customQuery || '').trim();
-		if (!innerQuery) innerQuery = `SELECT * FROM "${tableName}" ORDER BY "id"`;
+		if (!innerQuery) innerQuery = `SELECT * FROM ${tableName} ORDER BY id`;
 
 		const defaultCols = this.repository.metadata.columns.map((c) => c.databaseName);
 		const isSelectStar = this.hasTopLevelSelectStar(innerQuery);

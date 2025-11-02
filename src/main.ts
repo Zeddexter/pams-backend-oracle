@@ -1,47 +1,54 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Logger, ValidationPipe } from '@nestjs/common';
-import { ErrorsInterceptor } from './core/services/error.interceptor';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { Logger } from '@nestjs/common';
+import * as oracledb from 'oracledb';
 
 async function bootstrap() {
-	const app = await NestFactory.create(AppModule);
-	const logger = new Logger('Bootstrap');
+  const logger = new Logger('Bootstrap');
 
-	const config = new DocumentBuilder()
-		.setTitle('PAMS BACKEND')
-		.setDescription('Descripciones de APIS de PAMS')
-		.setVersion('1.0')
-		.addTag('Pams')
-		.build();
+  try {
+    oracledb.initOracleClient({
+      libDir: process.env.DB_CLIENT || 'C:\\app\\Administrator\\product\\11.2.0\\dbhome_1\\bin',
+    });
+    oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
 
-	const documentFactory = () => SwaggerModule.createDocument(app, config);
-	SwaggerModule.setup('api', app, documentFactory);
-	app.setGlobalPrefix('api');
+    await oracledb.createPool({
+      user: process.env.DB_USERNAME || 'PAMS',
+      password: process.env.DB_PASSWORD || 'oracle',
+      connectString: `${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.SERVICE_NAME}`,
+    });
 
-	app.useGlobalPipes(
-  new ValidationPipe({
-    transform: true, // ✅ permite que se apliquen los @Type(() => Date)
-    whitelist: true, // ✅ elimina propiedades no definidas en el DTO
-    forbidNonWhitelisted: true, // ✅ lanza error si hay campos no permitidos
-    transformOptions: {
-      enableImplicitConversion: true, // ✅ convierte strings a Date, number, boolean, etc.
-    },
-  }),
-);
+    logger.log('✅ Oracle Client inicializado correctamente');
+  } catch (error) {
+    logger.error('❌ Error inicializando Oracle Client:', error);
+  }
 
+  // 🚀 Crear app NestJS
+  const app = await NestFactory.create(AppModule);
 
-	app.enableCors();
-	app.useGlobalInterceptors(new ErrorsInterceptor());
+  // ✅ Habilitar CORS completamente
+  app.enableCors({
+    origin: [
+      'http://localhost:4200',
+      'http://192.168.1.13:4200',
+      'http://192.168.1.13' // incluye este si accedes sin puerto
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
 
-	// Habilitar graceful shutdown de Nest (ANTES de listen)
-	app.enableShutdownHooks();
+  // Prefijo global para las rutas
+  app.setGlobalPrefix('api');
 
-	const port = Number(process.env.PORT) || 3000;
-	await app.listen(port);
+  const port = Number(process.env.PORT) || 3005;
 
-	// El resto de señales las maneja Nest. No llamar app.close() manual aquí.
+  // ✅ Importante: escucha en toda la red
+  await app.listen(port, '0.0.0.0');
 
-	logger.log(`Application is running on: ${port}`);
+  logger.log(`🚀 App corriendo en http://192.168.1.13:${port}/api`);
 }
+
 bootstrap();

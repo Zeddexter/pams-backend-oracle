@@ -3,7 +3,7 @@ import { Entity, PrimaryColumn, Column } from 'typeorm';
 /**
  * Tabla de productos (adaptada a PostgreSQL)
  */
-@Entity({ name: 'maestro_producto', synchronize: false })
+@Entity({ name: 'MAESTROPRODUCTO', synchronize: false })
 export class MAESTROPRODUCTO {
   @PrimaryColumn({ name: 'cod_tienda', type: 'varchar', length: 2 })
   codTienda: string;

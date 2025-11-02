@@ -1,78 +1,93 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { MAESTROPRODUCTO } from 'src/database';
-import { Clientes } from 'src/database/entities/cliente.entity';
-import { Faccab } from 'src/database/entities/faccab.entity';
-import { Faclin } from 'src/database/entities/faclin.entity';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import * as oracledb from 'oracledb';
+import { DataSource } from 'typeorm';
 import { InvoiceResult } from 'src/database/entities/invoice-result.entity';
-import { Repository } from 'typeorm';
 
 @Injectable()
 export class InvoiceService {
-	constructor(
-		@InjectRepository(Faccab)
-		private readonly faccabRepository: Repository<Faccab>,
-		@InjectRepository(Faclin)
-		private readonly faclinRepository: Repository<Faclin>,
-		@InjectRepository(Clientes)
-		private readonly clientesRepository: Repository<Clientes>,
-		@InjectRepository(MAESTROPRODUCTO)
-		private readonly maestroproductoRepository: Repository<MAESTROPRODUCTO>,
-	) {}
+  constructor(private readonly dataSource: DataSource) {}
 
-	async consultaDNI_RUC(
-		DNI: string = '',
-		RUC: string = '',
-		TIPO: string = '1',
-	): Promise<InvoiceResult[]> {
-		try {
-			const queryBuilder = this.faccabRepository
-				.createQueryBuilder('A') // Esto ya define FACCAB como alias 'A'
-				.innerJoin(Faclin, 'B', 'A.SERIE = B.SERIE AND A.NUMERO = B.NUMERO')
-				.innerJoin(MAESTROPRODUCTO, 'M', 'M.IDMAESTROPRODUCTO = B.IDMAESTROPRODUCTO')
-				.innerJoin(
-					Clientes,
-					'C',
-					'C.CODTIENDA = A.CODTIENDA AND C.CODCLIENTE = A.CODCLIENTE',
-				)
-				.select([
-					`C.RUC AS "RUC"`,
-					`C.RAZONSOCIAL AS "RAZONSOCIAL"`,
-					`C.DNI AS "DNI"`,
-					`A.SERIE AS "SERIE"`,
-					`A.NUMERO AS "NUMERO"`,
-					`A.CODCLIENTE AS "CODCLIENTE"`,
-					`B.IDMAESTROPRODUCTO AS "IDMAESTROPRODUCTO"`,
-					`M.NOMPRODUCTOMAESTRO AS "DESCRIPCION"`,
-					`A.FECHAEMISION AS "FECHAEMISION"`,
-					`A.FECHADESPACHO AS "FECHADESPACHO"`,
-					`A.FECHAENVIOSUNAT AS "FECHAENVIOSUNAT"`,
-					`B.CANTIDAD AS "CANTIDAD"`,
-					`B.PRECIO AS "PRECIO"`,
-				]);
-				// queryBuilder.andWhere(
-				// 	`M.IDEXISTENCIA not in ('01')`,
-				// 	{ DNI },
-				// );
-			if (TIPO === '1' && DNI) {
-				queryBuilder.andWhere(
-					`C.DNI IS NOT NULL AND NVL(TO_CHAR(C.DNI), '') = :DNI`,
-					{ DNI },
-				);
-			} else if (TIPO === '2' && RUC) {
-				queryBuilder.andWhere(
-					`C.RUC IS NOT NULL AND NVL(TO_CHAR(C.RUC), '') = :RUC`,
-					{ RUC },
-				);
-			} else {
-				return [];
-			}
-queryBuilder.orderBy('A.FECHAEMISION', 'DESC');
-			console.log(queryBuilder.getSql());
-			return await queryBuilder.getRawMany();
-		} catch (error) {
-			console.error('Error executing consultaDNI_RUC:', error);
-			throw new Error('An error occurred while fetching invoice data.');
-		}
-	}
+  async consultaDNI_RUC(
+    DNI: string = '',
+    RUC: string = '',
+    TIPO: string = '1',
+  ): Promise<InvoiceResult[]> {
+    let connection: oracledb.Connection | null = null;
+
+    try {
+      // 🔹 Obtener parámetros de conexión desde TypeORM
+      const options = (this.dataSource.driver as any).options;
+
+      console.log('🧩 Intentando conectar a Oracle con:');
+      console.log({
+        user: options.username,
+        connectString: options.connectString,
+        serviceName: options.serviceName || '(no especificado)',
+        host: options.host || '(localhost)',
+      });
+
+      // 🔹 Crear la conexión real con el cliente Oracle
+      connection = await oracledb.getConnection({
+        user: options.username,
+        password: options.password,
+        connectString: options.connectString,
+      });
+
+      // 🔹 Verificar el usuario de sesión actual
+      const sessionUser = await connection.execute(
+        `SELECT SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS CURRENT_SCHEMA,
+                SYS_CONTEXT('USERENV','SESSION_USER') AS SESSION_USER,
+                SYS_CONTEXT('USERENV','SERVICE_NAME') AS SERVICE_NAME
+         FROM DUAL`
+      );
+      console.log('✅ Sesión Oracle activa:', sessionUser.rows);
+
+      // 🔹 Forzar el schema PAMS (por si acaso)
+      await connection.execute(`ALTER SESSION SET CURRENT_SCHEMA = PAMS`);
+      console.log('🔁 Schema cambiado a PAMS');
+
+      // 🔹 Ejecutar el SP
+      const result = await connection.execute(
+        `
+        BEGIN
+          PAMS.SP_CONSULTA_FACTURAS_PAMS(:p_tipo, :p_dni, :p_ruc, :p_cursor);
+        END;
+        `,
+        {
+          p_tipo: TIPO,
+          p_dni: DNI || null,
+          p_ruc: RUC || null,
+          p_cursor: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      );
+
+      console.log('📤 Procedimiento ejecutado correctamente, leyendo cursor...');
+
+      const cursor = result.outBinds.p_cursor;
+      const rows = await cursor.getRows(1000);
+      await cursor.close();
+
+      console.log(`✅ Registros devueltos: ${rows.length}`);
+      return rows as InvoiceResult[];
+    } catch (error) {
+      console.error('❌ Error ejecutando SP_CONSULTA_FACTURAS_PAMS:', error);
+      throw new HttpException(
+        {
+          message: 'Error al ejecutar el procedimiento almacenado.',
+          detalle: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      if (connection) {
+        try {
+          await connection.close();
+          console.log('🔒 Conexión Oracle cerrada correctamente.');
+        } catch (closeErr) {
+          console.warn('⚠️ Error cerrando conexión Oracle:', closeErr);
+        }
+      }
+    }
+  }
 }
