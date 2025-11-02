@@ -5,7 +5,16 @@ import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import { MODULES } from './modules/modules.constant';
 import { AppService } from './app.service';
+import * as oracledb from 'oracledb';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
+try {
+	oracledb.initOracleClient({ libDir: process.env.DB_CLIENT }); // Ruta al cliente Oracle Instant Client
+} catch (err) {
+	console.error('Error initializing Oracle Client:', err);
+	process.exit(1);
+}
 @Module({
   imports: [
     // 🔹 Cargar variables de entorno (.env)
